@@ -96,7 +96,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     pictureLabel = new QLabel;
     vboxlayout_setting->addWidget(pictureLabel);
-    QPixmap picture("D:\\QT\\MyProduct\\QtSerialPort\\hospital.png");
+    QPixmap picture(":/images/hospital.png");
     pictureLabel->setPixmap(picture.scaled(QSize(300,300),Qt::KeepAspectRatio,Qt::SmoothTransformation));
 
 
