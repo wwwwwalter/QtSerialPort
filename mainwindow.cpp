@@ -8,14 +8,14 @@
 #include <QPalette>
 #include <QApplication>
 #include <QStyleFactory>
+#include <QTimerEvent>
+#include <QDateTime>
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     //App styles
-    const QString defaultStyleName = QApplication::style()->objectName();
-    QStringList styleNames = QStyleFactory::keys();
-
     uiStyleName = new QLabel(tr("UiStyleName"));
     uiStyleNameComboBox = new QComboBox;
     uiStyleNameComboBox->addItems(QStyleFactory::keys());
@@ -25,6 +25,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     //main widget
     resize(800,600);
+    setWindowIcon(QIcon(":/images/logo.png"));
     mainWidget = new QWidget;
     leftWidget = new QWidget;
     rightWidget = new QWidget;
@@ -89,17 +90,19 @@ MainWindow::MainWindow(QWidget *parent)
     openSerialPortButton = new QPushButton(tr("open"));
     openSerialPortButton->setDefault(true);
     closeSerialPortButton = new QPushButton(tr("close"));
+    hexShowCheckBox = new QCheckBox(tr("Hex show"));
     hexSendCheckBox = new QCheckBox(tr("Hex send"));
-    timerSendCheckBox = new QCheckBox(tr("timer send"));
-    sendButton = new QPushButton(tr("send"));
-    sendIntervalLabel = new QLabel(tr("send interval"));
+    timerSendCheckBox = new QCheckBox(tr("Timer send"));
+    newLineCheckBox = new QCheckBox(tr("New line"));
+    sendIntervalLabel = new QLabel(tr("Send interval"));
     sendIntervalLineEdit = new QLineEdit("1000");
     sendIntervalUnitsLabel = new QLabel(tr("ms"));
     gridlayout_setting->addWidget(openSerialPortButton,7,0);
     gridlayout_setting->addWidget(closeSerialPortButton,7,1);
-    gridlayout_setting->addWidget(hexSendCheckBox,8,0);
+    gridlayout_setting->addWidget(hexShowCheckBox,8,0);
+    gridlayout_setting->addWidget(newLineCheckBox,8,1);
     gridlayout_setting->addWidget(timerSendCheckBox,9,0);
-    gridlayout_setting->addWidget(sendButton,9,1);
+    gridlayout_setting->addWidget(hexSendCheckBox,9,1);
     gridlayout_setting->addWidget(sendIntervalLabel,10,0);
     gridlayout_setting->addWidget(sendIntervalLineEdit,10,1);
     gridlayout_setting->addWidget(sendIntervalUnitsLabel,10,2);
@@ -139,15 +142,14 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     receiveDataEdit = new QPlainTextEdit;
-    hexShowCheckBox = new QCheckBox(tr("Hex show"));
-    unpackCheckBox = new QCheckBox(tr("unpack"));
-    clearreceiveDataButton = new QPushButton(tr("clear"));
+
+    timeStampCheckBox = new QCheckBox(tr("timestamp"));
+    clearReceiveDataButton = new QPushButton(tr("clear"));
     vboxlayout_receive_group->addWidget(receiveDataEdit);
     vboxlayout_receive_group->addLayout(hboxlayout_receive_bottom);
     hboxlayout_receive_bottom->addStretch();
-    hboxlayout_receive_bottom->addWidget(hexSendCheckBox);
-    hboxlayout_receive_bottom->addWidget(unpackCheckBox);
-    hboxlayout_receive_bottom->addWidget(clearreceiveDataButton);
+    hboxlayout_receive_bottom->addWidget(timeStampCheckBox);
+    hboxlayout_receive_bottom->addWidget(clearReceiveDataButton);
 
     //group send
     sendDataGroupBox = new QGroupBox(tr("send"));
@@ -157,10 +159,12 @@ MainWindow::MainWindow(QWidget *parent)
     sendDataGroupBox->setLayout(vboxlayout_send_group);
 
     sendDataEdit = new QPlainTextEdit;
+    sendButton = new QPushButton(tr("send"));
     clearSendEditButton = new QPushButton(tr("clear"));
     vboxlayout_send_group->addWidget(sendDataEdit);
     vboxlayout_send_group->addLayout(hboxlayout_send_bottom);
     hboxlayout_send_bottom->addStretch();
+    hboxlayout_send_bottom->addWidget(sendButton);
     hboxlayout_send_bottom->addWidget(clearSendEditButton);
 
 
@@ -206,16 +210,19 @@ MainWindow::MainWindow(QWidget *parent)
     isSerialOpened = false;
     timerSendInterval = sendIntervalLineEdit->text().toInt();
 
-    serialPort = new QSerialPort;
-    connect(serialPort,&QSerialPort::readyRead,this,&MainWindow::RxSerial);
+    //serialPort = new QSerialPort;
+    //connect(serialPort,&QSerialPort::readyRead,this,&MainWindow::RxSerial);
 
 
 
     //connect
     connect(openSerialPortButton,&QPushButton::clicked,this,&MainWindow::OpenSerialPort);
     connect(closeSerialPortButton,&QPushButton::clicked,this,&MainWindow::CloseSerialPort);
+    connect(sendButton,&QPushButton::clicked,this,&MainWindow::TxSerial);
     connect(timerSendCheckBox,&QCheckBox::stateChanged,this,&MainWindow::UpdateTimerSend);
     connect(sendIntervalLineEdit,&QLineEdit::textChanged,this,&MainWindow::UpdateTimerSendInterval);
+    connect(clearReceiveDataButton,&QPushButton::clicked,this,&MainWindow::ClearReceiveEdit);
+    connect(clearSendEditButton,&QPushButton::clicked,this,&MainWindow::ClearSendEdit);
 
 
 
@@ -235,8 +242,12 @@ void MainWindow::UpdateUiStyle()
 void MainWindow::OpenSerialPort()
 {
     if(isSerialOpened==false){
+        //create new serialPort
+        serialPort = new QSerialPort;
+        connect(serialPort,&QSerialPort::readyRead,this,&MainWindow::RxSerial);
+
         serialPort->setPortName(serialPortNameComboBox->currentText()); //com
-        if(serialPort->open(QIODevice::ReadOnly)){
+        if(serialPort->open(QIODevice::ReadWrite)){
             serialPort->setBaudRate(serialPortBaudRateComboBox->currentText().toInt()); //BaudRate
             //DataBits
             switch(serialPortDataBitsComboBox->currentText().toInt()){
@@ -307,17 +318,21 @@ void MainWindow::OpenSerialPort()
                 break;
             }
 
-            //connect(serialPort,&QSerialPort::readyRead,this,&MainWindow::ReadSerial);
             isSerialOpened = true;
+
+            QPalette pe;
+            pe.setColor(QPalette::ButtonText,QColor("blue"));
+            openSerialPortButton->setPalette(pe);
+
         }
         else{
-            QMessageBox::critical(nullptr,tr("information"),tr("serial com%1 open failed").arg(serialPort->portName()));
+            QMessageBox::critical(nullptr,tr("information"),tr("serial %1 open failed").arg(serialPort->portName()));
             return;
         }
 
     }
     else{
-        QMessageBox::warning(nullptr,tr("information"),tr("serial com%1 is opened").arg(serialPort->portName()));
+        QMessageBox::warning(nullptr,tr("information"),tr("serial %1 is opened").arg(serialPort->portName()));
         return;
     }
 }
@@ -329,6 +344,10 @@ void MainWindow::CloseSerialPort()
         serialPort->close();
         serialPort->deleteLater();
         isSerialOpened = false;
+
+        QPalette pe;
+        //pe.setColor(QPalette::ButtonText,QColor("blue"));
+        openSerialPortButton->setPalette(pe);//return default
     }
 }
 
@@ -336,16 +355,23 @@ void MainWindow::TxSerial()
 {
     if(isSerialOpened){
         if(serialPort->isOpen()){
-            QString str = sendDataEdit->toPlainText();
+            QString txMsg = sendDataEdit->toPlainText();
+            QByteArray txData = txMsg.toLocal8Bit(); //Qt(unicode)->Windows(GBK)
+
+            //hex send
             if(hexSendCheckBox->isChecked()){
-                QByteArray bytes;
-                bytes = QByteArray::fromHex(str.toLatin1());
-                serialPort->write(bytes);
+                txData = txData.toHex().data();
+                qDebug()<<txData;
             }
-            else{
-                QByteArray bytes = str.toLatin1();
-                serialPort->write(bytes);
+
+            //new line
+            if(newLineCheckBox->isChecked()){
+                txData+="\r\n";
             }
+
+            //send
+            serialPort->write(txData);
+            qDebug()<<txData;
         }
     }
 }
@@ -354,19 +380,27 @@ void MainWindow::RxSerial()
 {
     rxData = serialPort->readAll();
     if(!rxData.isEmpty()){
+
+        QString currentDate;
+        QString rxMsg;
+        //hex show
         if(hexShowCheckBox->isChecked()){
             QString str = rxData.toHex().data();
             str = str.toUpper();
-            QString buffer;
             for(int i = 0;i<str.length();i+=2){
-                buffer+=str.mid(i,2);
-                buffer+=' ';
+                rxMsg+=str.mid(i,2);
+                rxMsg+=' ';
             }
-            receiveDataEdit->setPlainText(buffer);
         }
         else{
-            receiveDataEdit->appendPlainText(rxData);
+            rxMsg = QString::fromLocal8Bit(rxData); //Windows(GBK)->Qt(unicode)
         }
+        //timeStamp
+        if(timeStampCheckBox->isChecked()){
+            currentDate = QDateTime::currentDateTime().toString("[yyyy-MM-dd hh:mm:ss.zzz]");
+        }
+        //append
+        receiveDataEdit->appendPlainText(currentDate + rxMsg);
     }
 }
 
@@ -393,5 +427,37 @@ void MainWindow::UpdateTimerSend()
 void MainWindow::UpdateTimerSendInterval()
 {
     timerSendInterval = sendIntervalLineEdit->text().toInt();
+}
+
+void MainWindow::timerEvent(QTimerEvent *event)
+{
+    if(event->timerId()==sendTimerId){
+        TxSerial();
+    }
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    //close serial port
+    if(isSerialOpened==true){
+        auto standerdButton = QMessageBox::question(this,tr("information"),tr("serial %1 is opened,do you realy want close it?").arg(serialPort->portName()));
+        if(standerdButton==QMessageBox::Yes){
+            serialPort->clear();
+            serialPort->close();
+            serialPort->deleteLater();
+            isSerialOpened = false;
+            QPalette pe;
+            openSerialPortButton->setPalette(pe);//return default
+            event->accept();
+        }
+        else{
+            event->ignore();
+        }
+    }
+}
+
+bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, qintptr *result)
+{
+    return false; //ignore
 }
 

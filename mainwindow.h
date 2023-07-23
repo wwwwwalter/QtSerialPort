@@ -52,9 +52,12 @@ private:
     QPushButton *openSerialPortButton;
     QPushButton *closeSerialPortButton;
 
+    QCheckBox *hexShowCheckBox;
     QCheckBox *hexSendCheckBox;
     QCheckBox *timerSendCheckBox;
-    QPushButton *sendButton;
+    QCheckBox *newLineCheckBox;
+
+
 
 
     QLabel *sendIntervalLabel;
@@ -69,12 +72,12 @@ private:
     //receive group
     QGroupBox *receiveDataGroupBox;
     QPlainTextEdit *receiveDataEdit;
-    QCheckBox *hexShowCheckBox;
-    QCheckBox *unpackCheckBox;
-    QPushButton *clearreceiveDataButton;
+    QCheckBox *timeStampCheckBox;
+    QPushButton *clearReceiveDataButton;
     //send group
     QGroupBox *sendDataGroupBox;
     QPlainTextEdit *sendDataEdit;
+    QPushButton *sendButton;
     QPushButton *clearSendEditButton;
 
 
@@ -84,6 +87,8 @@ private:
     QByteArray rxData;
     int sendTimerId;
     int timerSendInterval;
+
+
 
 
 public:
@@ -104,5 +109,11 @@ public slots:
 
 
 
+
+    // QObject interface
+protected:
+    virtual void timerEvent(QTimerEvent *event);
+    virtual void closeEvent(QCloseEvent *event);
+    virtual bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result);
 };
 #endif // MAINWINDOW_H
