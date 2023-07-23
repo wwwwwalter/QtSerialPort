@@ -6,10 +6,23 @@
 #include <QMessageBox>
 #include <QMetaEnum>
 #include <QPalette>
+#include <QApplication>
+#include <QStyleFactory>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    //App styles
+    const QString defaultStyleName = QApplication::style()->objectName();
+    QStringList styleNames = QStyleFactory::keys();
+
+    uiStyleName = new QLabel(tr("UiStyleName"));
+    uiStyleNameComboBox = new QComboBox;
+    uiStyleNameComboBox->addItems(QStyleFactory::keys());
+    connect(uiStyleNameComboBox,&QComboBox::currentTextChanged,this,&MainWindow::UpdateUiStyle);
+
+
+
     //main widget
     resize(800,600);
     mainWidget = new QWidget;
@@ -74,6 +87,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     openSerialPortButton = new QPushButton(tr("open"));
+    openSerialPortButton->setDefault(true);
     closeSerialPortButton = new QPushButton(tr("close"));
     hexSendCheckBox = new QCheckBox(tr("Hex send"));
     timerSendCheckBox = new QCheckBox(tr("timer send"));
@@ -89,7 +103,8 @@ MainWindow::MainWindow(QWidget *parent)
     gridlayout_setting->addWidget(sendIntervalLabel,10,0);
     gridlayout_setting->addWidget(sendIntervalLineEdit,10,1);
     gridlayout_setting->addWidget(sendIntervalUnitsLabel,10,2);
-
+    gridlayout_setting->addWidget(uiStyleName,11,0);
+    gridlayout_setting->addWidget(uiStyleNameComboBox,11,1);
 
 
 
@@ -104,6 +119,11 @@ MainWindow::MainWindow(QWidget *parent)
     pe.setColor(QPalette::Window,QColor("white"));
     pictureLabel->setAutoFillBackground(true);
     pictureLabel->setPalette(pe);
+
+    QPushButton *button = new QPushButton(tr("Button"));
+    vboxlayout_setting->addWidget(button);
+
+
 
 
 
@@ -205,6 +225,11 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
 
+}
+
+void MainWindow::UpdateUiStyle()
+{
+    QApplication::setStyle(QStyleFactory::create(uiStyleNameComboBox->currentText()));
 }
 
 void MainWindow::OpenSerialPort()

@@ -39,6 +39,7 @@ private:
     QLabel *serialPortDataBitsLabel;
     QLabel *serialPortStopBitsLabel;
     QLabel *serialPortFlowControlLabel;
+    QLabel *uiStyleName;
 
     QComboBox *serialPortNameComboBox;
     QComboBox *serialPortBaudRateComboBox;
@@ -46,6 +47,7 @@ private:
     QComboBox *serialPortDataBitsComboBox;
     QComboBox *serialPortStopBitsComboBox;
     QComboBox *serialPortFlowControlComboBox;
+    QComboBox *uiStyleNameComboBox;
 
     QPushButton *openSerialPortButton;
     QPushButton *closeSerialPortButton;
@@ -88,6 +90,7 @@ public:
 
 
 public slots:
+    void UpdateUiStyle();
     void OpenSerialPort();
     void CloseSerialPort();
     void RxSerial();
@@ -96,6 +99,7 @@ public slots:
     void ClearSendEdit();
     void UpdateTimerSend();
     void UpdateTimerSendInterval();
+
 
 
 
